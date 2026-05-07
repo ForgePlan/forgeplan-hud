@@ -186,11 +186,21 @@ fp_render_idle() {
         done
     fi
 
-    # Hint: prefer cached health.next_action[0]; fallback to static route CTA.
-    local hint_text='forgeplan route "<task>"'
-    if [[ -n "$FP_HEALTH_NEXT_ACTION" ]]; then
-        hint_text=$(fp_truncate "$FP_HEALTH_NEXT_ACTION" 60)
+    # Hint: pick the highest-priority category and render its bilingual pair.
+    # User chose "own short categories" over forgeplan's verbose next_action,
+    # so the hint stays predictable and crisp.
+    local hint_key="idle_route"
+    if   [[ "${FP_STALE:-0}"        -gt 0 ]]; then hint_key="idle_stale"
+    elif [[ "${FP_MISMATCHES:-0}"   -gt 0 ]]; then hint_key="idle_mismatch"
+    elif [[ "${FP_ORPHANS:-0}"      -gt 0 ]]; then hint_key="idle_orphans"
+    elif [[ "${FP_ACTIVE_STUBS:-0}" -gt 0 ]]; then hint_key="idle_stubs"
+    elif [[ "${FP_AT_RISK:-0}"      -gt 0 ]]; then hint_key="idle_at_risk"
+    elif [[ "${FP_BLIND_SPOTS:-0}"  -gt 0 ]]; then hint_key="idle_blind"
+    elif [[ "${FP_DRAFTS:-0}"       -ge 10 ]]; then hint_key="idle_drafts"
     fi
+
+    local hint_text
+    hint_text=$(i18n_pair "$hint_key")
     local hint
     hint=$(dim "▸ $hint_text")
 

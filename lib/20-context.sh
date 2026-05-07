@@ -42,10 +42,10 @@ ctx_zone() {
     local window_size=$2
     read -r warn alert crit hard <<< "$(ctx_profile "$window_size")"
 
-    if   [[ $pct -ge $hard  ]]; then echo "$HUD_BAD $HUD_HINT_ROTATE"
-    elif [[ $pct -ge $crit  ]]; then echo "$HUD_BAD $HUD_HINT_COMPACT"
-    elif [[ $pct -ge $alert ]]; then echo "$HUD_BRAND $HUD_HINT_FADE"
-    elif [[ $pct -ge $warn  ]]; then echo "$HUD_WARN $HUD_HINT_PREP"
+    if   [[ $pct -ge $hard  ]]; then echo "$HUD_BAD ctx_hard"
+    elif [[ $pct -ge $crit  ]]; then echo "$HUD_BAD ctx_crit"
+    elif [[ $pct -ge $alert ]]; then echo "$HUD_BRAND ctx_alert"
+    elif [[ $pct -ge $warn  ]]; then echo "$HUD_WARN ctx_warn"
     else                             echo "$HUD_GOOD "
     fi
 }
@@ -55,7 +55,7 @@ ctx_render() {
     local pct=$1
     local window_size=$2
 
-    read -r color hint <<< "$(ctx_zone "$pct" "$window_size")"
+    read -r color hint_key <<< "$(ctx_zone "$pct" "$window_size")"
 
     local bar
     bar=$(ctx_bar "$pct" "$color")
@@ -63,8 +63,10 @@ ctx_render() {
     local pct_str
     pct_str=$(fg256 "$color" "${pct}%")
 
-    if [[ -n "$hint" ]]; then
-        printf '%s %s %s' "$bar" "$pct_str" "$(fg256 "$color" "$hint")"
+    if [[ -n "$hint_key" ]]; then
+        local hint_text
+        hint_text=$(i18n_pair "$hint_key")
+        printf '%s %s %s' "$bar" "$pct_str" "$(fg256 "$color" "$hint_text")"
     else
         printf '%s %s' "$bar" "$pct_str"
     fi
