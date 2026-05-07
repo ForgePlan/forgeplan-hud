@@ -30,42 +30,24 @@ ctx_profile() {
     fi
 }
 
-# ─────────────────────────────────────────────────────────────────────
-#  TODO(user): implement ctx_zone()
-# ─────────────────────────────────────────────────────────────────────
-# This is the heart of the U-curve logic and the most "authorial" decision
-# in this whole project — please write it yourself (5-10 lines).
+# Map context percentage to (color, hint) pair.
+# Owner decision: WARN already nudges the user to start drafting a handoff
+# prompt for the next session — no "silent yellow" zone. Rationale: by the
+# time CRIT lands, drafting handoff under pressure produces a worse summary
+# than drafting it calmly at 50-60%.
 #
-# Inputs:
-#   $1 = pct (integer 0-100)
-#   $2 = window_size (e.g. 200000 or 1000000)
-#
-# Output (single line, space-separated):
-#   <color_code> <hint_string>
-#
-# where:
-#   color_code  ∈ { $HUD_GOOD, $HUD_WARN, $HUD_BRAND, $HUD_BAD }
-#   hint_string ∈ { "", $HUD_HINT_WARN, $HUD_HINT_ALERT, $HUD_HINT_CRIT }
-#
-# Use ctx_profile to get thresholds:
-#   read -r warn alert crit hard <<< "$(ctx_profile "$window_size")"
-#
-# Recommended mapping:
-#   pct < warn   → GOOD,  no hint
-#   pct < alert  → WARN,  no hint        (early caution, not yet loud)
-#   pct < crit   → BRAND, "$HUD_HINT_WARN"   (you said brand orange = "tense but ok")
-#   pct < hard   → BAD,   "$HUD_HINT_ALERT"  (critical — must act)
-#   pct ≥ hard   → BAD,   "$HUD_HINT_CRIT"   (must rotate session NOW)
-#
-# Open question only you can answer: do you want pct < alert to show ANY hint?
-# Some folks want zero noise until things actually hurt; others like a soft heads-up.
-#
+# Output: "<color_code> <hint_string>" (hint may be empty).
 ctx_zone() {
     local pct=$1
     local window_size=$2
-    # YOUR CODE HERE
-    # Default fallback to keep the script working — replace this:
-    echo "$HUD_GOOD "
+    read -r warn alert crit hard <<< "$(ctx_profile "$window_size")"
+
+    if   [[ $pct -ge $hard  ]]; then echo "$HUD_BAD $HUD_HINT_ROTATE"
+    elif [[ $pct -ge $crit  ]]; then echo "$HUD_BAD $HUD_HINT_COMPACT"
+    elif [[ $pct -ge $alert ]]; then echo "$HUD_BRAND $HUD_HINT_FADE"
+    elif [[ $pct -ge $warn  ]]; then echo "$HUD_WARN $HUD_HINT_PREP"
+    else                             echo "$HUD_GOOD "
+    fi
 }
 
 # Compose the full context segment: bar + percent + optional hint.

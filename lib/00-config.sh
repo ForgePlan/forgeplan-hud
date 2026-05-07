@@ -22,10 +22,13 @@ HUD_CTX_1M_HARD=85
 # Rate-limit thresholds (5h and 7d windows from CC stdin, 0-100)
 HUD_RATE_WARN=80
 
-# Hint language — short EN per design decision
-HUD_HINT_WARN="mid fades"
-HUD_HINT_ALERT="/compact NOW"
-HUD_HINT_CRIT="NEW SESSION"
+# Hint language — short EN, one per threshold zone.
+# WARN appears earliest so the user has time to *prepare* a session-handoff
+# prompt instead of being caught at 95% with nothing drafted.
+HUD_HINT_PREP="prep handoff"      # WARN zone   — start drafting next-session prompt
+HUD_HINT_FADE="mid fades"         # ALERT zone  — middle of context starts losing fidelity
+HUD_HINT_COMPACT="/compact NOW"   # CRIT zone   — must compact or rotate immediately
+HUD_HINT_ROTATE="NEW SESSION"     # HARD zone   — past the point of useful work, rotate
 
 # Bar width (filled + empty cells). 10 cells = 10% per cell, easy to read.
 HUD_BAR_WIDTH=10
