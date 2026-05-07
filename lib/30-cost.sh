@@ -58,15 +58,27 @@ duration_render() {
     dim "⏱ $out"
 }
 
-# Format model + window-size badge: "⬢ Opus 1M" or "⬢ Sonnet 200k"
+# Format model + window-size badge: "⬢ Opus 1M" or "⬢ Sonnet 200k".
+# Optional ⌥ prefix when running inside a git worktree.
+# Optional [agent: name] suffix when CC was launched with --agent.
 model_render() {
     local name=$1
     local window_size=$2
+    local worktree=${3:-}
+    local agent=${4:-}
+
     local size_label
     if [[ $window_size -ge 500000 ]]; then
         size_label="1M"
     else
         size_label="200k"
     fi
-    printf '%s %s' "$(color_brand '⬢')" "$(bold "$name $size_label")"
+
+    local prefix=""
+    [[ -n "$worktree" ]] && prefix="$(color_brand '⌥') "
+
+    local suffix=""
+    [[ -n "$agent" ]] && suffix=" $(dim "[agent: $agent]")"
+
+    printf '%s%s %s%s' "$prefix" "$(color_brand '⬢')" "$(bold "$name $size_label")" "$suffix"
 }
