@@ -1,0 +1,5 @@
+cache/forgeplan.json
+cache/stamp
+*.log
+.DS_Store
+.local/

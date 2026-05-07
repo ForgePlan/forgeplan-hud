@@ -1,0 +1,29 @@
+{
+  "cwd": "/Users/test/Work/ForgePlan",
+  "session_id": "abc-123",
+  "model": { "id": "claude-opus-4-7", "display_name": "Opus" },
+  "workspace": {
+    "current_dir": "/Users/test/Work/ForgePlan",
+    "project_dir": "/Users/test/Work/ForgePlan"
+  },
+  "version": "2.1.90",
+  "output_style": { "name": "default" },
+  "cost": {
+    "total_cost_usd": 0.42,
+    "total_duration_ms": 720000,
+    "total_api_duration_ms": 47000,
+    "total_lines_added": 156,
+    "total_lines_removed": 23
+  },
+  "context_window": {
+    "total_input_tokens": 230000,
+    "total_output_tokens": 12000,
+    "context_window_size": 1000000,
+    "used_percentage": 23,
+    "remaining_percentage": 77
+  },
+  "rate_limits": {
+    "five_hour": { "used_percentage": 23.5, "resets_at": 1738425600 },
+    "seven_day": { "used_percentage": 41.2, "resets_at": 1738857600 }
+  }
+}
