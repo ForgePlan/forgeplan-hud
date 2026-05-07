@@ -1,0 +1,11 @@
+{
+  "cwd": "/tmp",
+  "model": { "display_name": "Sonnet" },
+  "workspace": { "current_dir": "/tmp", "project_dir": "/tmp" },
+  "cost": { "total_cost_usd": 0.12, "total_duration_ms": 360000 },
+  "context_window": { "context_window_size": 200000, "used_percentage": 18 },
+  "rate_limits": {
+    "five_hour": { "used_percentage": 12 },
+    "seven_day": { "used_percentage": 30 }
+  }
+}

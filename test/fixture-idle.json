@@ -1,0 +1,11 @@
+{
+  "cwd": "/Users/test/Work/ForgePlan",
+  "model": { "display_name": "Opus" },
+  "workspace": { "current_dir": "/Users/test/Work/ForgePlan", "project_dir": "/Users/test/Work/ForgePlan" },
+  "cost": { "total_cost_usd": 0.04, "total_duration_ms": 180000 },
+  "context_window": { "context_window_size": 200000, "used_percentage": 12 },
+  "rate_limits": {
+    "five_hour": { "used_percentage": 8 },
+    "seven_day": { "used_percentage": 41 }
+  }
+}
