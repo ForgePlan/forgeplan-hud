@@ -74,11 +74,15 @@ model_render() {
         size_label="200k"
     fi
 
+    # CC may pass display_name like "Opus 4.7 (1M context)" — strip the
+    # parenthetical so we don't render "Opus 4.7 (1M context) 1M".
+    local clean_name="${name%% (*}"
+
     local prefix=""
     [[ -n "$worktree" ]] && prefix="$(color_brand '⌥') "
 
     local suffix=""
     [[ -n "$agent" ]] && suffix=" $(dim "[agent: $agent]")"
 
-    printf '%s%s %s%s' "$prefix" "$(color_brand '⬢')" "$(bold "$name $size_label")" "$suffix"
+    printf '%s%s %s%s' "$prefix" "$(color_brand '⬢')" "$(bold "$clean_name $size_label")" "$suffix"
 }
