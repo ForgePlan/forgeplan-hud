@@ -40,33 +40,47 @@ fp_session_read() {
     FP_DEPTH=$(fp_yaml_key   "$f" "route_depth")
 }
 
-# Read enriched cache (R_eff, title, evidence_count, orphans, verdict).
-# Sets FP_REFF, FP_TITLE, FP_KIND, FP_STATUS, FP_EVID_COUNT, FP_ORPHANS, FP_VERDICT.
+# Read enriched cache (artifact + project-wide health snapshot).
+# Sets FP_REFF, FP_TITLE, FP_KIND, FP_STATUS, FP_EVID_COUNT, FP_NEXT_ACTION
+# and full health bag: FP_VERDICT, FP_ORPHANS, FP_STALE, FP_MISMATCHES,
+# FP_AT_RISK, FP_ACTIVE_STUBS, FP_BLIND_SPOTS, FP_DRAFTS, FP_ACTIVES,
+# FP_HEALTH_NEXT_ACTION.
 fp_cache_read() {
     local cache="$HUD_DIR/cache/forgeplan.json"
     [[ ! -f "$cache" ]] && return
 
+    # Use ASCII Unit Separator to preserve empty fields (titles can have spaces).
     local data
     data=$(jq -r --arg id "$FP_ACTIVE" '
         . as $root |
         ($root.artifacts[$id] // {}) as $a |
+        ($root.health             // {}) as $h |
         [
-          $a.r_eff           // "",
-          $a.title           // "",
-          $a.kind            // "",
-          $a.status          // "",
-          $a.evidence_count  // 0,
-          $root.health.orphans // 0,
-          $root.health.verdict // ""
-        ] | @tsv
+          ($a.r_eff           // ""),
+          ($a.title           // ""),
+          ($a.kind            // ""),
+          ($a.status          // ""),
+          ($a.evidence_count  // 0  | tostring),
+          ($a.next_action     // ""),
+          ($h.verdict         // ""),
+          ($h.orphans         // 0  | tostring),
+          ($h.stale           // 0  | tostring),
+          ($h.phase_mismatches // 0 | tostring),
+          ($h.at_risk         // 0  | tostring),
+          ($h.active_stubs    // 0  | tostring),
+          ($h.blind_spots     // 0  | tostring),
+          ($h.drafts          // 0  | tostring),
+          ($h.actives         // 0  | tostring),
+          ($h.next_action     // "")
+        ] | join("")
     ' "$cache" 2>/dev/null) || return
 
-    IFS=$'\t' read -r FP_REFF FP_TITLE FP_KIND FP_STATUS FP_EVID_COUNT FP_ORPHANS FP_VERDICT <<< "$data"
-
-    # Pull next_action separately for use in idle hint.
-    FP_NEXT_ACTION=$(jq -r --arg id "$FP_ACTIVE" \
-        '.artifacts[$id].next_action // ""' \
-        "$cache" 2>/dev/null)
+    IFS=$'\x1f' read -r \
+        FP_REFF FP_TITLE FP_KIND FP_STATUS FP_EVID_COUNT FP_NEXT_ACTION \
+        FP_VERDICT FP_ORPHANS FP_STALE FP_MISMATCHES \
+        FP_AT_RISK FP_ACTIVE_STUBS FP_BLIND_SPOTS \
+        FP_DRAFTS FP_ACTIVES FP_HEALTH_NEXT_ACTION \
+        <<< "$data"
 }
 
 # Cache freshness: seconds since last refresh (mtime of stamp).
@@ -126,6 +140,70 @@ fp_reff_render() {
     printf '%s %s %s' "$(dim 'R')" "$(fg256 "$color" "$(printf '%.2f' "$reff")")" "$dots"
 }
 
+# Idle render: hybrid layout.
+# - healthy             → "🔨 idle  ▸ <next_action or default>"
+# - needs_attention/    → "🔨 idle ⚠ <counts>  ▸ <next_action>"
+# - critical            → "🔨 critical ✕ <counts>  ▸ <next_action>"
+fp_render_idle() {
+    local marker
+    marker=$(color_brand '🔨')
+
+    local verdict_seg="" counts="" sep
+    sep=$(dim ' · ')
+
+    # Verdict marker → glyph + label color.
+    # forgeplan returns: healthy | needs_attention | unhealthy | critical | "".
+    case "$FP_VERDICT" in
+        critical)
+            verdict_seg=" $(color_bad "critical ✕")"
+            ;;
+        unhealthy)
+            verdict_seg=" $(color_bad "⚠")"
+            ;;
+        needs_attention)
+            verdict_seg=" $(color_warn "⚠")"
+            ;;
+        *)
+            # healthy or empty — no marker, will keep CTA short
+            ;;
+    esac
+
+    # Counts only when there is something to fix. Order = priority of attention.
+    local parts=()
+    [[ "${FP_STALE:-0}"        -gt 0 ]]  && parts+=("$(color_bad   "${FP_STALE} stale")")
+    [[ "${FP_MISMATCHES:-0}"   -gt 0 ]]  && parts+=("$(color_warn  "${FP_MISMATCHES} mismatch")")
+    [[ "${FP_ORPHANS:-0}"      -gt 0 ]]  && parts+=("$(color_warn  "${FP_ORPHANS} orphans")")
+    [[ "${FP_ACTIVE_STUBS:-0}" -gt 0 ]]  && parts+=("$(color_warn  "${FP_ACTIVE_STUBS} stubs")")
+    [[ "${FP_AT_RISK:-0}"      -gt 0 ]]  && parts+=("$(color_warn  "${FP_AT_RISK} at-risk")")
+    # Drafts only when accumulation is worth flagging (≥10) — small drafts are normal flow.
+    [[ "${FP_DRAFTS:-0}"       -ge 10 ]] && parts+=("$(dim         "${FP_DRAFTS} drafts")")
+
+    if [[ ${#parts[@]} -gt 0 ]]; then
+        counts=" ${parts[0]}"
+        local i
+        for ((i = 1; i < ${#parts[@]}; i++)); do
+            counts+="$sep${parts[$i]}"
+        done
+    fi
+
+    # Hint: prefer cached health.next_action[0]; fallback to static route CTA.
+    local hint_text='forgeplan route "<task>"'
+    if [[ -n "$FP_HEALTH_NEXT_ACTION" ]]; then
+        hint_text=$(fp_truncate "$FP_HEALTH_NEXT_ACTION" 60)
+    fi
+    local hint
+    hint=$(dim "▸ $hint_text")
+
+    # Compose:  🔨 idle[ <verdict>][ <counts>]  ▸ <hint>
+    local idle_label
+    idle_label=$(dim 'idle')
+    if [[ -n "$verdict_seg" || -n "$counts" ]]; then
+        printf '%s %s%s%s  %s\n' "$marker" "$idle_label" "$verdict_seg" "$counts" "$hint"
+    else
+        printf '%s %s  %s\n' "$marker" "$idle_label" "$hint"
+    fi
+}
+
 # Truncate string to N chars with ellipsis. Pure bash, no awk.
 fp_truncate() {
     local s=$1 n=$2
@@ -151,15 +229,10 @@ fp_render_line() {
     marker=$(color_brand '🔨')
 
     # Idle case — no active artifact or phase says idle.
+    # Layout: hybrid. Healthy → short CTA. needs_attention/critical → expand
+    # with counts of what is rotting in the project (stale/mismatch/orphans/drafts).
     if [[ -z "$FP_ACTIVE" || "$FP_PHASE" == "idle" ]]; then
-        local idle_label
-        idle_label=$(dim 'idle')
-        local hint_text='forgeplan route "<task>"'
-        # If daemon cached a next_action from forgeplan, prefer it
-        [[ -n "$FP_NEXT_ACTION" ]] && hint_text="$FP_NEXT_ACTION"
-        local hint
-        hint=$(dim "▸ $hint_text")
-        printf '%s %s  %s\n' "$marker" "$idle_label" "$hint"
+        fp_render_idle
         return
     fi
 

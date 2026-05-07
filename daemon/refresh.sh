@@ -62,15 +62,21 @@ if [[ -n "$ACTIVE" ]]; then
     fi
 fi
 
-# Project-wide health: orphan count + verdict text.
+# Project-wide health: counts + verdict + top next_action for the idle dashboard.
 HEALTH_JSON='{}'
 health_raw=$("$FPL_BIN" health --json 2>/dev/null) || health_raw=""
 if [[ -n "$health_raw" ]]; then
     HEALTH_JSON=$(printf '%s' "$health_raw" | jq '{
-        orphans:          (.orphans // [] | length),
+        verdict:          (.verdict // ""),
+        orphans:          (if (.orphans | type) == "array"          then .orphans          | length else (.orphans // 0)          end),
         stale:            (.stale_count // 0),
-        phase_mismatches: (.phase_mismatches // [] | length),
-        verdict:          (.verdict // "")
+        phase_mismatches: (if (.phase_mismatches | type) == "array" then .phase_mismatches | length else (.phase_mismatches // 0) end),
+        at_risk:          (if (.at_risk | type) == "array"          then .at_risk          | length else (.at_risk // 0)          end),
+        active_stubs:     (if (.active_stubs | type) == "array"     then .active_stubs     | length else (.active_stubs // 0)     end),
+        blind_spots:      (if (.blind_spots | type) == "array"      then .blind_spots      | length else (.blind_spots // 0)      end),
+        drafts:           ([.by_status[]? | select(.status == "draft") | .count] | first // 0),
+        actives:          ([.by_status[]? | select(.status == "active") | .count] | first // 0),
+        next_action:      (.next_actions[0] // "")
     }' 2>/dev/null) || HEALTH_JSON='{}'
 fi
 
