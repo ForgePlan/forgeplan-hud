@@ -5,19 +5,22 @@
 # Brand orange #ff5a1f (matches ForgePlanWeb --accent)
 HUD_BRAND_256=208
 
-# Threshold pairs for context bar: (warn_pct, alert_pct, critical_pct).
-# Two profiles — picked at runtime based on context_window_size from CC stdin.
-# Rationale: 1M-context models suffer "lost in the middle" earlier than 200k,
-# so the curve is shifted left.
+# Threshold pairs for context bar: (warn_pct, alert_pct, critical_pct, hard_pct).
+# Two profiles picked at runtime based on context_window_size.
+#
+# Calibration note (v0.4): the 1M profile was originally shifted left at 30%
+# under the lost-in-middle hypothesis. Field experience showed that Opus 4.7
+# at 1M doesn't visibly degrade until ~50%, so the 1M curve was pushed back
+# closer to the 200k profile — only the upper bands stay slightly tighter.
 HUD_CTX_200K_WARN=50
 HUD_CTX_200K_ALERT=70
 HUD_CTX_200K_CRIT=85
 HUD_CTX_200K_HARD=95
 
-HUD_CTX_1M_WARN=30
-HUD_CTX_1M_ALERT=50
-HUD_CTX_1M_CRIT=70
-HUD_CTX_1M_HARD=85
+HUD_CTX_1M_WARN=50
+HUD_CTX_1M_ALERT=65
+HUD_CTX_1M_CRIT=80
+HUD_CTX_1M_HARD=92
 
 # Rate-limit thresholds (5h and 7d windows from CC stdin, 0-100)
 HUD_RATE_WARN=80
