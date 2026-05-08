@@ -20,8 +20,18 @@ if [[ -f "$SETTINGS" ]]; then
     cmd=$(jq -r '.statusLine.command // ""' "$SETTINGS" 2>/dev/null || echo "")
     if [[ "$cmd" == *"forgeplan-hud"* ]]; then
         tmp=$(mktemp)
-        jq 'del(.statusLine)' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
-        say "Cleared .statusLine from settings.json"
+        jq --arg pat "forgeplan-hud" '
+            del(.statusLine) |
+            # Strip our PostToolUse invalidate hook + collapse empty matchers
+            .hooks.PostToolUse = ((.hooks.PostToolUse // []) | map(
+                .hooks |= ((. // []) | map(select((.command // "") | contains($pat) | not)))
+            ) | map(select((.hooks // []) | length > 0))) |
+            # If PostToolUse list is now empty, remove the key entirely
+            if (.hooks.PostToolUse // [] | length) == 0 then del(.hooks.PostToolUse) else . end |
+            # If hooks object is now empty, remove it too
+            if (.hooks // {} | length) == 0 then del(.hooks) else . end
+        ' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
+        say "Cleared .statusLine and PostToolUse:forgeplan invalidate hook from settings.json"
 
         if [[ -f "${SETTINGS}.bak" ]]; then
             warn "Backup found at ${SETTINGS}.bak — review and restore manually if needed."

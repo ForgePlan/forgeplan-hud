@@ -203,6 +203,20 @@ The hot path never blocks on `forgeplan` calls. Slow ones (`score` ~2 s, `health
 live in the detached daemon and update the cache between ticks. If `forgeplan` isn't on
 PATH, the HUD silently falls back to last-known cache, or to `session.yaml` only.
 
+### Live refresh on `forgeplan` commands
+
+`install.sh` also wires a **PostToolUse:Bash hook** (`daemon/invalidate.sh`) into
+`~/.claude/settings.json`. After every Bash tool call that runs `forgeplan` or `fpl`,
+the hook deletes the cache stamp — the next statusline tick (≤10 s, usually
+the next assistant message) forks the daemon and refreshes within ~200-500 ms.
+
+This turns the HUD into a **tight feedback loop**: run `forgeplan link PRD-001 ...` →
+on the next response the bar already reflects the new orphan count. Without the hook
+you'd wait for the 30 s cache TTL.
+
+The matcher only fires on standalone `forgeplan` / `fpl` words — `forgeplan-hud` and
+`myfpl` are correctly ignored. `uninstall.sh` removes the hook cleanly.
+
 ## Configuration
 
 All knobs live in `~/.claude/forgeplan-hud/lib/00-config.sh`:

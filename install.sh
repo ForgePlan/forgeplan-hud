@@ -61,15 +61,24 @@ if [[ -n "$existing" && "$existing" != *"forgeplan-hud"* ]]; then
 fi
 
 tmp=$(mktemp)
-jq --arg cmd "$TARGET/statusline.sh" '
+jq --arg cmd "$TARGET/statusline.sh" --arg invalidate "$TARGET/daemon/invalidate.sh" --arg pat "forgeplan-hud" '
     .statusLine = {
         type: "command",
         command: $cmd,
         padding: 0,
         refreshInterval: 10
-    }
+    } |
+    # Live refresh: invalidate cache after any forgeplan/fpl Bash call.
+    # Idempotent — strip any prior forgeplan-hud invalidate hooks first, then add fresh.
+    .hooks //= {} |
+    .hooks.PostToolUse = (
+        ((.hooks.PostToolUse // []) | map(
+            .hooks |= ((. // []) | map(select((.command // "") | contains($pat) | not)))
+        ) | map(select((.hooks // []) | length > 0)))
+        + [{matcher: "Bash", hooks: [{type: "command", command: $invalidate}]}]
+    )
 ' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
-say "settings.json patched"
+say "settings.json patched (statusLine + PostToolUse:forgeplan invalidate hook)"
 
 # ─── verify ──────────────────────────────────────────────────────────
 if [[ -x "$TARGET/statusline.sh" ]]; then
